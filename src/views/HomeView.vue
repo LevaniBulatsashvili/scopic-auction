@@ -11,6 +11,10 @@
           <input v-model="searchBar" @input="filteredProducts" id="search" name="search" class="block w-full border-[whitesmoke]  border-[3px] focus:border-white rounded-md py-2 pl-10 pr-3 text-sm  sm:text-sm" placeholder="Search" type="search" />
         </div>
       </div>
+      <span class="relative z-0 flex justify-end  rounded-md">
+    <button @click="sortAuction('low')" type="button" class="relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:z-10 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">Price: Low to Hight</button>
+    <button @click="sortAuction('high')" type="button" class="-ml-px relative inline-flex items-center px-4 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:z-10 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">Price: Hight to Low</button>
+  </span>
         <ul role="list" class="space-y-12 sm:grid sm:grid-cols-2 sm:gap-x-6 sm:gap-y-12 sm:space-y-0 lg:grid-cols-3 lg:gap-x-8">
           <li v-for="product in products[pageId - 1]" :key="product.id">
             <div class="space-y-4">
@@ -22,8 +26,12 @@
                   <div>
                     <h3>{{ product.name }}</h3>
                     <p :title=product.summary class="text-indigo-600 whitespace-nowrap overflow-ellipsis overflow-hidden max-w-[250px]">{{ product.summary }}</p>
+                    
                   </div>
-                  <router-link @click="store.setCurrentProduct(product)" to="/product"><button type="button" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-full shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 whitespace-nowrap">Bid now</button></router-link>
+                </div>
+                <div class="flex items-center justify-between px-2">
+                  <span :title=product.price class="text-indigo-600 whitespace-nowrap overflow-ellipsis overflow-hidden max-w-[250px]">${{ product.price }}</span>
+                <router-link @click="store.setCurrentProduct(product)" to="/product"><button type="button" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-full shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 whitespace-nowrap">Bid now</button></router-link>
                 </div>
               </div>
             </div>
@@ -59,18 +67,23 @@
 
 <script setup>
 import { ChevronLeftIcon, ChevronRightIcon, SearchIcon } from '@heroicons/vue/solid'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProductStore } from '../stores/product'
 
 const route = useRoute()
 const router = useRouter()
+const pageId = Number(route.params.id)
 const store = useProductStore()
 const searchBar = ref('')
-const products = store.products
-const pageId = Number(route.params.id)
+const products = ref(store.products)
 const filteredProducts = () => {
-  products.value = store.filterProducts(searchBar.value)
+  products.value = store.filterProducts(searchBar.value, pageId - 1)
+}
+const sortAuction = (sortBy) => {
+  const chosenProducts = products.value[pageId - 1]
+  if(sortBy === 'low') chosenProducts.sort((a, b) => a.price - b.price)
+  else chosenProducts.sort((a, b) => b.price - a.price)
 }
 
 </script>

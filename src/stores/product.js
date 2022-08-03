@@ -80,7 +80,11 @@ export const useProductStore = defineStore('product', {
 
   getters: {
     filterProducts: (state) => {
-      return (productToKeep) => state.products.filter(product => product.name.toLocaleLowerCase().includes(productToKeep.toLowerCase()) || product.summary.toLocaleLowerCase().includes(productToKeep.toLocaleLowerCase()))
+      return (productToKeep, pageOn) => {
+        const allProducts = [...state.products]
+        allProducts[pageOn] = allProducts[pageOn].filter(product => product.name.toLowerCase().includes(productToKeep.toLowerCase()) || product.summary.toLowerCase().includes(productToKeep.toLowerCase()))
+        return allProducts
+      }
     }
   }
 })

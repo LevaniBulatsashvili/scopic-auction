@@ -82,6 +82,7 @@
   import { useRoute } from 'vue-router'
   import { Notyf } from 'notyf';
   import 'notyf/notyf.min.css';
+  import data from '../stores/Data/productData'
 
   const store = useProductStore()
   const product = store.currentProduct
