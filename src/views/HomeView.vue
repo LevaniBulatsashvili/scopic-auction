@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white">
+  <div class="home bg-white">
     <div class="mx-auto pt-12 px-4 max-w-7xl sm:px-6 lg:px-8 ">
       <div class="space-y-12">
       <div class="w-full">
@@ -8,7 +8,7 @@
           <div class="pointer-events-none absolute inset-y-0 left-0 pl-3 flex items-center">
             <SearchIcon class="h-5 w-5 text-gray-400" aria-hidden="true" />
           </div>
-          <input v-model="searchBar" @input="filteredProducts" id="search" name="search" class="block w-full border-[whitesmoke]  border-[3px] focus:border-white rounded-md py-2 pl-10 pr-3 text-sm  sm:text-sm" placeholder="Search" type="search" />
+          <input v-model="searchBar" @input="filtercurrentPageProducts" id="search" name="search" class="block w-full border-[whitesmoke]  border-[3px] focus:border-white rounded-md py-2 pl-10 pr-3 text-sm  sm:text-sm" placeholder="Search" type="search" />
         </div>
       </div>
       <span class="relative z-0 flex justify-end  rounded-md">
@@ -16,7 +16,7 @@
     <button @click="sortAuction('high')" type="button" class="-ml-px relative inline-flex items-center px-4 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:z-10 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">Price: Hight to Low</button>
   </span>
         <ul role="list" class="space-y-12 sm:grid sm:grid-cols-2 sm:gap-x-6 sm:gap-y-12 sm:space-y-0 lg:grid-cols-3 lg:gap-x-8">
-          <li v-for="product in products[pageId - 1]" :key="product.id">
+          <li v-for="product in currentPageProducts" :key="product._id">
             <div class="space-y-4">
               <div class="aspect-w-3 aspect-h-2">
                 <img class="object-cover shadow-lg rounded-lg" :src="product.imageUrl" alt="" />
@@ -31,7 +31,7 @@
                 </div>
                 <div class="flex items-center justify-between px-2">
                   <span :title=product.price class="text-indigo-600 whitespace-nowrap overflow-ellipsis overflow-hidden max-w-[250px]">${{ product.price }}</span>
-                <router-link @click="store.setCurrentProduct(product)" to="/product"><button type="button" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-full shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 whitespace-nowrap">Bid now</button></router-link>
+                <router-link @click="setCurrentProductId(product._id)" to="/product"><button type="button" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-full shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 whitespace-nowrap">Bid now</button></router-link>
                 </div>
               </div>
             </div>
@@ -49,11 +49,11 @@
                 <ChevronLeftIcon class="h-5 w-5" aria-hidden="true" />
               </button>
 
-              <div v-for="(page, index) in products" :key="index">
+              <div v-for="(product, index) in allProducts.slice(0, Math.ceil(allProducts.length / 10))" :key="index">
                 <router-link :to="`/home/page/${index + 1}`" aria-current="page" class="z-10 bg-indigo-50 border-indigo-500 text-indigo-600 relative inline-flex items-center px-4 py-2 border text-sm font-medium"> {{ index + 1}} </router-link>
               </div>
 
-              <button @click="router.push(`/home/page/${pageId + 1}`)" :disabled="pageId === products.length" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+              <button @click="router.push(`/home/page/${pageId + 1}`)" :disabled="pageId === allProducts.slice(0, Math.ceil(allProducts.length / 10)).length" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
                 <span class="sr-only">Next</span>
                 <ChevronRightIcon class="h-5 w-5" aria-hidden="true" />
               </button>
@@ -67,23 +67,54 @@
 
 <script setup>
 import { ChevronLeftIcon, ChevronRightIcon, SearchIcon } from '@heroicons/vue/solid'
-import { computed, ref } from 'vue'
+import axios from 'axios'
+import { onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useProductStore } from '../stores/product'
 
-const route = useRoute()
 const router = useRouter()
-const pageId = Number(route.params.id)
-const store = useProductStore()
+if(!sessionStorage.name) router.push('/')
 const searchBar = ref('')
-const products = ref(store.products)
-const filteredProducts = () => {
-  products.value = store.filterProducts(searchBar.value, pageId - 1)
-}
-const sortAuction = (sortBy) => {
-  const chosenProducts = products.value[pageId - 1]
-  if(sortBy === 'low') chosenProducts.sort((a, b) => a.price - b.price)
-  else chosenProducts.sort((a, b) => b.price - a.price)
+const route = useRoute()
+const pageId = Number(route.params.id)
+
+const allProducts = ref([])
+const currentPageProducts = ref([])
+
+const fetchProducts = () => {
+  try {
+    axios.get('http://localhost:3001/api/v1/items').then(products => {
+      allProducts.value = products.data
+      currentPageProducts.value = allProducts.value.slice((pageId - 1) * 10, pageId * 10)
+    })
+  }
+  catch (err) {
+    console.log(err)
+  }
 }
 
+fetchProducts()
+const refetch = setInterval(fetchProducts, 60000)
+
+const filtercurrentPageProducts = () => {
+  const productToKeep = searchBar.value
+  currentPageProducts.value = allProducts.value.filter(product => product.name.toLowerCase().includes(productToKeep.toLowerCase()) || product.summary.toLowerCase().includes(productToKeep.toLowerCase()))
+}
+
+const setCurrentProductId = (id) => {
+  sessionStorage.setItem('currentProductId', id)
+}
+
+const sortAuction = (sortBy) => {
+  const currentProducts = currentPageProducts.value
+  if(sortBy === 'low') currentProducts.sort((a, b) => a.price - b.price)
+  else currentProducts.sort((a, b) => b.price - a.price)
+}
+
+onUnmounted(() => clearInterval(refetch))
 </script>
+
+<style scoped>
+  .home {
+    min-height: 64.1vh;
+  }
+</style>

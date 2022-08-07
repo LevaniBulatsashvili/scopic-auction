@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-[#0B82D4] min-h-full px-4 py-16 sm:px-6 sm:py-24 md:grid md:place-items-center lg:px-8">
+  <div class="notFound bg-[#0B82D4] min-h-full px-4 py-16 sm:px-6 sm:py-24 md:grid md:place-items-center lg:px-8">
     <div class="max-w-max mx-auto">
       <main class="sm:flex">
         <p class="text-4xl font-extrabold text-white sm:text-5xl">404</p>
@@ -27,3 +27,9 @@ onMounted(()=>{
 })
 
 </script>
+
+<style scoped>
+  .notFound {
+    min-height: 64.1vh;
+  }
+</style>

@@ -16,6 +16,11 @@ const routes =  [
     component: () => import('../views/HomeView.vue')
   },
   {
+    path: '/autoBid',
+    name: 'auto',
+    component: () => import('../views/AutoBidView.vue')
+  },
+  {
     path: '/product',
     name: 'product',
     component: () => import('../views/ProductView.vue')

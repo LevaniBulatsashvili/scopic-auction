@@ -5,14 +5,12 @@
 </template>
 
 <script setup>
-import { onMounted } from "vue-demi"
 import { useRoute, useRouter } from "vue-router"
-import Footer from "./components/footer/Footer.vue"
-import Header from "./components/header/Header.vue"
+import Footer from "./components/Footer.vue"
+import Header from "./components/Header.vue"
 
 const route = useRoute()
 const router = useRouter()
-onMounted(() => router.push('/'))
 
 </script>
 
