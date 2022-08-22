@@ -35,43 +35,43 @@
 </template>
 
 <script setup>
-  import useVuelidate from '@vuelidate/core'
+import useVuelidate from '@vuelidate/core'
   import { required, minLength, helpers } from '@vuelidate/validators'
   import { onBeforeMount, reactive } from 'vue'
   import { useRouter } from 'vue-router'
 
-  const router = useRouter()
+const router = useRouter()
 
-  const state = reactive({
-    userName: '',
-    password: '',
-  })
+const state = reactive({
+  userName: '',
+  password: '',
+})
 
-  const conditions = ["user1", "user2", "admin1","admin2"];
+const conditions = ["user1", "user2", "admin1","admin2"];
 
-  const userOrAdmin = (value) => conditions.some(el => value.includes(el))
+const userOrAdmin = (value) => conditions.some(el => value.includes(el))
 
-  const rules = {
-    userName: { required, minLength: minLength(4), userOrAdmin: helpers.withMessage("Couldn’t find your Account", userOrAdmin)
-   },
-    password: { required, minLength: minLength(4) },
-  }
+const rules = {
+  userName: { required, minLength: minLength(4), userOrAdmin: helpers.withMessage("Couldn’t find your Account", userOrAdmin)
+  },
+  password: { required, minLength: minLength(4) },
+}
 
-  const v$ = useVuelidate(rules, state)
+const v$ = useVuelidate(rules, state)
 
-  const signIn = async () => {
-    const result = await v$.value.$validate()
+const signIn = async () => {
+  const result = await v$.value.$validate()
 
-    if (result) {
-      const user = {
-        name: state.userName,
-        imageUrl: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460__340.png',
-        isAdmin: state.isAdmin,
-        alert: 100,
-        maximumBiddingMoney: 0,
-        moneyInBids: 0
-      }
-      let admin
+  if (result) {
+    const user = {
+      name: state.userName,
+      imageUrl: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460__340.png',
+      isAdmin: state.isAdmin,
+      alert: 100,
+      maximumBiddingMoney: 0,
+      moneyInBids: 0
+    }
+    let admin
       if(user.name === 'user1' || user.name === 'user2') admin = false
       else admin = true
       sessionStorage.name = user.name
@@ -81,8 +81,8 @@
       sessionStorage.maximumBiddingMoney = user.maximumBiddingMoney
       sessionStorage.moneyInBids = user.moneyInBids
       router.go()
-    }
   }
+}
 
 onBeforeMount(() => sessionStorage.name ? router.push('/home/page/1') : null)
 </script>

@@ -1,17 +1,4 @@
 # scopic-auction
-
-[Check out the project](https://levanibulatsashvili.github.io/scopic-auction/)
-
-This template should help get you started developing with Vue 3 in Vite.
-
-## Recommended IDE Setup
-
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vitejs.dev/config/).
-
 ## Project Setup
 
 ```sh
@@ -21,7 +8,23 @@ npm install
 ### Compile and Hot-Reload for Development
 
 ```sh
+npm run dev 
+open new terminal and navigate to backend then run
 npm run dev
+```
+
+```sh
+Users are 
+admin1 
+admin2
+user1
+user2
+
+password any.
+```
+
+```sh
+Admins can remove/edit/add from bid section.
 ```
 
 ### Compile and Minify for Production

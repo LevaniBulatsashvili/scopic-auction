@@ -12,11 +12,11 @@
         </div>
       </div>
       <span class="relative z-0 flex justify-end  rounded-md">
-    <button @click="sortAuction('low')" type="button" class="relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:z-10 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">Price: Low to Hight</button>
-    <button @click="sortAuction('high')" type="button" class="-ml-px relative inline-flex items-center px-4 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:z-10 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">Price: Hight to Low</button>
+    <button @click="sortAuction('')" type="button" class="relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:z-10 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">Price: Low to Hight</button>
+    <button @click="sortAuction('-')" type="button" class="-ml-px relative inline-flex items-center px-4 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:z-10 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">Price: Hight to Low</button>
   </span>
         <ul role="list" class="space-y-12 sm:grid sm:grid-cols-2 sm:gap-x-6 sm:gap-y-12 sm:space-y-0 lg:grid-cols-3 lg:gap-x-8">
-          <li v-for="product in currentPageProducts" :key="product._id">
+          <li v-for="product in displayedProducts" :key="product._id">
             <div class="space-y-4">
               <div class="aspect-w-3 aspect-h-2">
                 <img class="object-cover shadow-lg rounded-lg" :src="product.imageUrl" alt="" />
@@ -49,11 +49,11 @@
                 <ChevronLeftIcon class="h-5 w-5" aria-hidden="true" />
               </button>
 
-              <div v-for="(product, index) in allProducts.slice(0, Math.ceil(allProducts.length / 10))" :key="index">
-                <router-link :to="`/home/page/${index + 1}`" aria-current="page" class="z-10 bg-indigo-50 border-indigo-500 text-indigo-600 relative inline-flex items-center px-4 py-2 border text-sm font-medium"> {{ index + 1}} </router-link>
+              <div v-for="index in totalPages" :key="index">
+                <router-link :to="`/home/page/${index}`" aria-current="page" class="z-10 bg-indigo-50 border-indigo-500 text-indigo-600 relative inline-flex items-center px-4 py-2 border text-sm font-medium"> {{ index }} </router-link>
               </div>
 
-              <button @click="router.push(`/home/page/${pageId + 1}`)" :disabled="pageId === allProducts.slice(0, Math.ceil(allProducts.length / 10)).length" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+              <button @click="router.push(`/home/page/${pageId + 1}`)" :disabled="pageId == totalPages" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
                 <span class="sr-only">Next</span>
                 <ChevronRightIcon class="h-5 w-5" aria-hidden="true" />
               </button>
@@ -67,9 +67,9 @@
 
 <script setup>
 import { ChevronLeftIcon, ChevronRightIcon, SearchIcon } from '@heroicons/vue/solid'
-import axios from 'axios'
-import { onUnmounted, ref } from 'vue'
+import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import fetchProducts from '../composables/fetchProducts'
 
 const router = useRouter()
 if(!sessionStorage.name) router.push('/')
@@ -78,39 +78,27 @@ const route = useRoute()
 const pageId = Number(route.params.id)
 
 const allProducts = ref([])
-const currentPageProducts = ref([])
-
-const fetchProducts = () => {
-  try {
-    axios.get('http://localhost:3001/api/v1/items').then(products => {
-      allProducts.value = products.data
-      currentPageProducts.value = allProducts.value.slice((pageId - 1) * 10, pageId * 10)
-    })
-  }
-  catch (err) {
-    console.log(err)
-  }
-}
-
-fetchProducts()
-const refetch = setInterval(fetchProducts, 60000)
+const displayedProducts = ref([])
+let totalPages = ref(1)
+fetchProducts(`page=${pageId}`).then(products => {
+  allProducts.value = products.data.data.items
+  displayedProducts.value = products.data.data.items
+})
+fetchProducts(`limit=100`).then(products => totalPages.value = (Math.ceil(products.data.resaults/10)))
 
 const filtercurrentPageProducts = () => {
   const productToKeep = searchBar.value
-  currentPageProducts.value = allProducts.value.filter(product => product.name.toLowerCase().includes(productToKeep.toLowerCase()) || product.summary.toLowerCase().includes(productToKeep.toLowerCase()))
+  displayedProducts.value = allProducts.value.filter(product => product.name.toLowerCase().includes(productToKeep.toLowerCase()) || product.summary.toLowerCase().includes(productToKeep.toLowerCase()))
 }
 
 const setCurrentProductId = (id) => {
   sessionStorage.setItem('currentProductId', id)
 }
 
-const sortAuction = (sortBy) => {
-  const currentProducts = currentPageProducts.value
-  if(sortBy === 'low') currentProducts.sort((a, b) => a.price - b.price)
-  else currentProducts.sort((a, b) => b.price - a.price)
+const sortAuction = (order) => {
+  fetchProducts(`page=${pageId}&sort=${order}price`).then(sortedProducts => displayedProducts.value = sortedProducts.data.data.items)
 }
 
-onUnmounted(() => clearInterval(refetch))
 </script>
 
 <style scoped>

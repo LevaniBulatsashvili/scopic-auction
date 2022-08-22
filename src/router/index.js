@@ -31,6 +31,11 @@ const routes =  [
     component: () => import('../views/AdminView.vue')
   },
   {
+    path: '/profile',
+    name: 'profile',
+    component: () => import('../views/ProfileView.vue')
+  },
+  {
     path: '/:catchAll(.*)',
     name: 'not-found',
     component: () => import('../views/NotFoundView.vue')

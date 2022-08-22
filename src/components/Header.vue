@@ -61,6 +61,10 @@ const user = reactive({
 })
 const notyf = new Notyf();
 
+const checkProfile = () => {
+  router.push('/profile')
+}
+
 const createAuction = () => {
   if (user.isAdmin) {
     router.push('/administration/create')
@@ -84,9 +88,11 @@ const logout = () => {
 }
 
 const userNavigation = [
+  { name: 'Profile', onClick: checkProfile },
   { name: 'Sign out', onClick: logout},
 ]
 const adminNavigatin = [
+  { name: 'Profile', onClick: checkProfile },
   { name: 'Create Auction', onClick: createAuction },
   { name: 'Sign out', onClick: logout},
 ]

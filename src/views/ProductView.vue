@@ -3,7 +3,7 @@
     <div class="max-w-2xl mx-auto py-16 px-4 sm:py-24 sm:px-6 lg:max-w-7xl lg:px-8 lg:grid lg:grid-cols-2 lg:gap-x-8">
       <div class="lg:max-w-lg lg:self-end">
         <div class="mt-4">
-          <h1 class="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">{{ product.name }}</h1>
+          <h1 class="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">{{ currentProduct.name }}</h1>
           <div class="flex gap-5 mt-3 items-center">
             <div class="text-2xl ">Auto bid</div>
             <Switch class="" @click="toggleAutoBid" v-model="autoBidEnabled" :class="[autoBidEnabled ? 'bg-indigo-600' : 'bg-gray-200', 'relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500']">
@@ -17,27 +17,30 @@
           <h2 id="information-heading" class="sr-only">Product information</h2>
 
           <div class="flex items-center">
-            <p class="text-lg text-gray-900 sm:text-xl">${{ product.price }}</p>
+            <p class="text-lg text-gray-900 sm:text-xl">${{ currentProduct.price }}</p>
           </div>
 
           <div class="mt-4 space-y-6">
-            <p class="text-base text-gray-500 break-words">{{ product.description }}</p>
+            <p class="text-base text-gray-500 break-words">{{ currentProduct.description }}</p>
           </div>
 
         </section>
       </div>
       <div class="mt-10 lg:mt-0 lg:col-start-2 lg:row-span-2 lg:self-center">
         <div class="aspect-w-1 aspect-h-1 rounded-lg overflow-hidden">
-          <img :src="product.imageUrl" :title="product.name" class="w-full h-full object-center object-cover" />
+          <img :src="currentProduct.imageUrl" :title="currentProduct.name" class="w-full h-full object-center object-cover" />
         </div>
       </div>
       <div class="mt-10 lg:max-w-lg lg:col-start-1 lg:row-start-2 lg:self-start">
         <section aria-labelledby="options-heading">
           <h2 id="options-heading" class="sr-only">Product options</h2>
-
+          <div class="text-indigo-800 text-[21px] mb-2">Bidding history</div>
+          <div class="flex uppercase ">
+            <div v-for="(bid, index) in biddingHistory" :key="index"><h1>{{ bid }} <span v-if="index !== 3">&#8592;</span></h1></div>
+          </div>
           <form>
-            <div>
-              <span>Highest Bidder: {{ product.highestBidder === '' ? 'None' : product.highestBidder }}</span>
+            <div class="mt-2">
+              Highest Bidder: <span class="uppercase whitespace-nowrap">{{ currentProduct.highestBidder === '' ? 'None' : currentProduct.highestBidder }}</span>
             </div>
             <div>
               <RadioGroup >
@@ -124,7 +127,6 @@
     </Dialog>
   </TransitionRoot>
 </template>
-
 <script setup>
 import { RadioGroup, RadioGroupDescription, RadioGroupLabel, RadioGroupOption, Dialog, DialogOverlay, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
 import { CheckIcon } from '@heroicons/vue/outline'
@@ -135,7 +137,10 @@ import { onUnmounted, ref, reactive, computed } from 'vue-demi'
 import { useRouter } from 'vue-router'
 import { Notyf } from 'notyf';
 import 'notyf/notyf.min.css';
-import axios from 'axios'
+import fetchProduct from '../composables/fetchProuct'
+import updateProduct from '../composables/updateProduct'
+import deleteProduct from '../composables/deleteProduct'
+import calculateBidTimeLeft from '../utils/calculateBidTimeLeft'
 
 const router = useRouter()
 if(!sessionStorage.name) router.push('/')
@@ -144,9 +149,7 @@ const autoBidEnabled = ref(false)
 const openBidmodal = ref(false)
 const openDeleteModal = ref(false)
 const bidInProgress = ref(false)
-const product = ref('')
-
-const url = `http://localhost:3001/api/v1/items/${sessionStorage.currentProductId}`
+const currentProduct = ref('')
 const notyf = new Notyf()
 
 const user = reactive({
@@ -156,75 +159,43 @@ const user = reactive({
 })
 
 const highestBid = ref('')
+const biddingHistory = ref([])
 const bidExperationDate = ref('')
 const bidTime = ref('-- : -- : -- : --')
-let updateCountdown
-
 const bids = [
   { name: 'Last bid made', description: highestBid },
   { name: 'Time Left', description: bidTime }
 ]
-
-const state = reactive({
-    outBidBy: product.value.price + 1
-  }) 
-const rules = computed(() => ({
-  outBidBy: { required, minValue: minValue(product.value.price + 1), maxValue: maxValue(100000) },
-}))
-
-const v$ = useVuelidate(rules, state)
-
+let updateCountdown
 let autoBid
 
+// Validation
+const state = reactive({
+    outBidBy: ''
+  }) 
+const rules = computed(() => ({
+  outBidBy: { required, minValue: minValue(currentProduct.value.price + 1), maxValue: maxValue(100000) },
+}))
+const v$ = useVuelidate(rules, state)
+
+// Refresh Timer
 const biddingTimeLeft = async () => {
-  let timeLeft = new Date(bidExperationDate.value).getTime() - new Date().getTime()
+  bidTime.value = calculateBidTimeLeft(bidExperationDate.value)
 
-  if(timeLeft > 0) {
-    let daysLeft = Math.floor(timeLeft/1000/60/60/24)
-    timeLeft -= daysLeft*1000*60*60*24
-  
-    let hoursLeft = Math.floor(timeLeft/1000/60/60)
-    timeLeft -= hoursLeft*1000*60*60
-
-    let minutesLeft = Math.floor(timeLeft/1000/60)
-    timeLeft -= minutesLeft*1000*60
-
-    let secondsLeft = Math.floor(timeLeft/1000)
-
-    daysLeft < 10 ? daysLeft = '0' + daysLeft : null
-    hoursLeft < 10 ? hoursLeft = '0' + hoursLeft : null
-    minutesLeft < 10 ? minutesLeft = '0' + minutesLeft : null
-    secondsLeft < 10 ? secondsLeft = '0' + secondsLeft : null
-
-    bidTime.value = `${daysLeft}:${hoursLeft}:${minutesLeft}:${secondsLeft}`
-  }
-  else {
-      await axios.put(url, {
-        username: 'user1',
-        name: product.value.name,
-        imageUrl: `https://picsum.photos/10${Math.round(Math.random()*89) + 10}/10${Math.round(Math.random()*89) + 10}`,
-        summary: product.value.summary,
-        description: product.value.description,
-        price: product.value.price,
-        highestBidder: product.value.highestBidder,
-        isActive: false,
-        endsIn: product.value.endsIn
-      })
-      .then(auction => {
-        bidTime.value = 'expired'
-        sessionStorage.setItem('currentProduct', JSON.stringify(auction.data))
-        clearInterval(updateCountdown)
-      })
-      .catch(err => console.log(err))
+  if(bidTime.value === 'expired') {
+    await updateProduct(sessionStorage.currentProductId, { isActive: false })
+    clearInterval(updateCountdown)
   }
 }
 
+// Fetch Product
 const fetchAuction = () => {
-  axios.get(`http://localhost:3001/api/v1/items/${sessionStorage.currentProductId}`)
-  .then(auction => {
-    const data = auction.data[0]
-    product.value = data
+  fetchProduct(sessionStorage.currentProductId)
+  .then(product => {
+    const data = product.data.data.item
+    currentProduct.value = data
     highestBid.value = data.price
+    biddingHistory.value = data.bidHistory.slice(0, 4)
     bidExperationDate.value = data.endsIn
     if(!state.outBidBy) state.outBidBy = data.price + 1
     if(!updateCountdown) {
@@ -236,70 +207,69 @@ const fetchAuction = () => {
 }
 
 fetchAuction()
-const refreshAuction = setInterval(fetchAuction, 1000)
+const refreshProduct = setInterval(fetchAuction, 1000)
 
-
+// Bidding
 const placeABid = async () => {
   const result = await v$.value.$validate()
-  if(user.name === product.value.highestBidder) {
+  if(user.name === currentProduct.value.highestBidder) {
     notyf.error('You are the highest bidder')
     openBidmodal.value = false
     return
   }
   if (result) {
-      bidInProgress.value = true
-      await axios.put(url, {
-        username: 'user1',
-        name: product.value.name,
-        imageUrl: `https://picsum.photos/10${Math.round(Math.random()*89) + 10}/10${Math.round(Math.random()*89) + 10}`,
-        summary: product.value.summary,
-        description: product.value.description,
-        price: state.outBidBy,
-        highestBidder: user.name,
-        isActive: true,
-        endsIn: product.value.endsIn
-      })
-      .then(auction => {
-        openBidmodal.value = false
-        product.value = auction.data
-        highestBid.value = auction.data.price
-        notyf.success('Bid was succesfull')
-        setTimeout(() => bidInProgress.value = false, 200)
-      })
-      .catch(err => console.log(err))
-    }
+    bidInProgress.value = true
+    setTimeout(() => bidInProgress.value = false, 400)
+    const product = await updateProduct(sessionStorage.currentProductId, { price: state.outBidBy, highestBidder: user.name, bidHistory: [user.name, ...currentProduct.value.bidHistory] })
+    const data = product.data.data.item
+
+    openBidmodal.value = false
+    currentProduct.value = data
+    highestBid.value = data.price
+    biddingHistory.value= data.bidHistory.slice(0, 4)
+    notyf.success('Bid was succesfull')
+  }
 }
 
+// AutoBid
 const toggleAutoBid = () => {
-  if(!autoBidEnabled.value) {
+  if(!autoBidEnabled.value && bidTime.value !== 'expired') {
+    let warn = true
     autoBid = setInterval(() => {
-      if(product.value.highestBidder !== user.name && product.value.price < user.maximumBiddingMoney) {
-        state.outBidBy = product.value.price + 1
+      if(currentProduct.value.highestBidder !== user.name && currentProduct.value.price < user.maximumBiddingMoney) {
+        state.outBidBy = currentProduct.value.price + 1
         sessionStorage.moneyInBids = state.outBidBy
         placeABid()
-        if((sessionStorage.moneyInBids / sessionStorage.maximumBiddingMoney) > (sessionStorage.alert / 100)) notyf.error(`You\'ve used more than ${sessionStorage.alert}% of your bidding money`)
+        if((sessionStorage.moneyInBids / sessionStorage.maximumBiddingMoney) > (sessionStorage.alert / 100) && warn) {
+          warn = false
+          notyf.error(`You\'ve used more than ${sessionStorage.alert}% of your bidding money`)
+        }
       }
-      else if (product.value.highestBidder !== user.name){
+      else if (currentProduct.value.highestBidder !== user.name){
         sessionStorage.moneyInBids = 0
         notyf.error('You\'ve run out of bidding money')
         clearInterval(autoBid)
       }
-      else if (bidTime === 'expired') {
-        sessionStorage.maximumBiddingMoney -= sessionStorage.moneyInBids
+      else if (bidTime.value === 'expired') {
+        if (currentProduct.value.highestBidder === user.name) {
+          sessionStorage.maximumBiddingMoney -= sessionStorage.moneyInBids
+          notyf.success('Congradulations on your new Item')
+        }
         sessionStorage.moneyInBids = 0
-        notyf.success('Congradulations on your new Item')
+        clearInterval(autoBid)
       }
     }, 5000)
-  } else {
+  }
+  else if (bidTime.value === 'expired') notyf.error('This bid is expired')
+  else {
     clearInterval(autoBid)
     notyf.error('Autobid deactivated')
   }
 }
 
 const deleteAuction = async () => {
-  await axios.delete(url).then(() => {
-    router.push('/home/page/1')
-  })
+  await deleteProduct(sessionStorage.currentProductId)
+  router.push('/home/page/1')
 }
 
 const toggleBidModal = () => {
@@ -312,9 +282,9 @@ const toggleDeleteBidModal = () => {
 
 onUnmounted(() => {
   clearInterval(updateCountdown)
-  clearInterval(refreshAuction)
+  clearInterval(refreshProduct)
   clearInterval(autoBid)
-  })
+})
 
 </script>
 

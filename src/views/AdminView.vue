@@ -80,12 +80,14 @@
   import { useRoute, useRouter } from 'vue-router'
   import { Notyf } from 'notyf'
   import 'notyf/notyf.min.css'
-  import axios from 'axios'
+  import createProduct from '../composables/createProduct'
+  import fetchProduct from '../composables/fetchProuct'
+  import updateProduct from '../composables/updateProduct'
 
   const router = useRouter()
   if(!sessionStorage.name) router.push('/')
+  const auctionName = ref(null)
   const notyf = new Notyf()
-  const url = 'http://localhost:3001/api/v1/items'
 
   // editing or creating auction
   const type = useRoute().params.type
@@ -97,7 +99,8 @@
         description: '',
         price: '',
         hours: '',
-      },) 
+        bidHistory: []
+      }) 
 
   const rules = {
     name: { required, minLength: minLength(3), maxLength: maxLength(20) },
@@ -106,28 +109,25 @@
     price: { required,  minValue: minValue(10), maxValue: maxValue(100000) },
     hours: { required, minValue: minValue(1),  maxValue: maxValue(720) },
   }
-
   const v$ = useVuelidate(rules, state)
 
-  const auctionName = ref(null);
-  if (type === 'edit') {
-    axios.get(`${url}/${sessionStorage.currentProductId}`)
-        .then(auction => {
-          const data = auction.data[0]
-          state.name = data.name
-          state.summary = data.summary,
-          state.description = data.description,
-          state.price = data.price
-        })
-        .catch(err => console.log(err))
-  }
+  if (type === 'edit') fetchProduct(sessionStorage.currentProductId)
+  .then(product => {
+    const data = product.data.data.item
+    state.name = data.name
+    state.summary = data.summary,
+    state.description = data.description,
+    state.price = data.price,
+    state.bidHistory = data.bidHistory
+  })
+  .catch(err => console.log(err))
+
   const createOrUpdateAuction = async () => {
     const result = await v$.value.$validate()
 
     if (result) {
       const date = new Date(new Date().getTime() + state.hours * 3600000)
-      const data = {
-          username: 'admin1',
+      const product = {
           name: state.name,
           imageUrl: `https://picsum.photos/10${Math.round(Math.random()*89) + 10}/10${Math.round(Math.random()*89) + 10}`,
           summary: state.summary,
@@ -135,26 +135,21 @@
           price: state.price,
           highestBidder: 'None',
           isActive: true,
-          endsIn: date
+          endsIn: date,
+          bidHistory: []
         }
 
       // Editing existing auction
       if (type === 'edit' ) {
-        axios.put(`${url}/${sessionStorage.currentProductId}`, data)
-        .then(() => {
-          notyf.success('auction succesfully updated')
-          router.push('/home/page/1')
-        })
-        .catch(err => console.log(err))
+        await updateProduct(sessionStorage.currentProductId, product)
+        notyf.success('auction succesfully updated')
+        router.push('/home/page/1')
       }
       // creating new auction
       else {
-        axios.post(url, data)
-        .then(auction => {
-          notyf.success('New auction successfully added!');
-          router.push(`/home/page/1`)
-        })
-        .catch(err => console.log(err))
+        await createProduct(product)
+        notyf.success('New auction successfully added!');
+        router.push(`/home/page/1`)
       }
     }
     else {
