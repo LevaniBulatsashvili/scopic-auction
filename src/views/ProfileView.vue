@@ -35,7 +35,7 @@ import fetchProducts from '../composables/fetchProducts';
 if(!sessionStorage.name) useRouter().push('/')
 const items = ref([])
 
-fetchProducts().then(products => {
+fetchProducts('limit=100').then(products => {
   const checkIfUserBidOnProduct = products.data.data.items.filter(product => product.bidHistory.includes(sessionStorage.name))
   items.value = checkIfUserBidOnProduct.map(product => {
     product.status = product.isActive ? 'Pending' : product.highestBidder === sessionStorage.name ? 'Won' : 'Lost'
